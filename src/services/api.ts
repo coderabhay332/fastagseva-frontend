@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://fasttagseva.vercel.app/api';
+const API_BASE_URL = 'https://fasttagseva.onrender.com/api';
 
 export const api = axios.create({
 	baseURL: API_BASE_URL,
