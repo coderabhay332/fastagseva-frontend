@@ -18,13 +18,17 @@ export default function HeroHeader() {
 
   const handleNavClick = (href: string) => {
     setIsMobileMenuOpen(false);
-    const element = document.querySelector(href);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
+    // Small delay to ensure the sheet closes before scrolling
+    setTimeout(() => {
+      const element = document.querySelector(href);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 100);
   };
 
   const handleLoginClick = () => {
+    setIsMobileMenuOpen(false);
     navigate('/login');
   };
 
@@ -79,23 +83,45 @@ export default function HeroHeader() {
                     <PanelRight className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent>
-                  <div className="flex flex-col gap-6 mt-8">
-                    <nav className="flex flex-col gap-4">
+                <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-white border-l-2 border-gray-200">
+                  <div className="flex flex-col gap-6 mt-8 p-4">
+                    <div className="flex items-center gap-2 mb-6">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg">
+                        <span className="text-white font-bold text-sm">T</span>
+                      </div>
+                      <span className="font-heading font-bold text-xl text-gray-800">TagSeva</span>
+                    </div>
+                    
+                    <nav className="flex flex-col gap-2">
                       {navigationItems.map((item) => (
                         <button
                           key={item.label}
                           onClick={() => handleNavClick(item.href)}
-                          className="text-left text-lg font-medium text-foreground hover:text-primary transition-colors"
+                          className="text-left text-lg font-medium text-gray-700 hover:text-blue-600 transition-colors py-3 px-4 rounded-lg hover:bg-blue-50 border border-transparent hover:border-blue-200"
                         >
                           {item.label}
                         </button>
                       ))}
                     </nav>
                     
-                    <Button className="w-full" onClick={handleLoginClick}>
-                      Login
-                    </Button>
+                    <div className="flex flex-col gap-3 mt-8 pt-6 border-t border-gray-200">
+                      <Button 
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white" 
+                        onClick={handleLoginClick}
+                      >
+                        Login
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="w-full border-blue-600 text-blue-600 hover:bg-blue-50" 
+                        onClick={() => {
+                          handleSignupClick();
+                          setIsMobileMenuOpen(false);
+                        }}
+                      >
+                        Sign Up
+                      </Button>
+                    </div>
                   </div>
                 </SheetContent>
               </Sheet>

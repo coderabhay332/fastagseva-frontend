@@ -4,6 +4,7 @@ import api from '../../services/api';
 
 interface AuthState {
 	accessToken: string | null;
+	refreshToken: string | null;
 	user: { id: string; email: string; role: 'USER' | 'ADMIN'; name?: string; phone?: string } | null;
 	loading: boolean;
 	error: string | null;
@@ -15,7 +16,7 @@ const initialState: AuthState = (() => {
 		const stored = localStorage.getItem('auth');
 		if (stored) return { ...JSON.parse(stored), loading: false, error: null } as AuthState;
 	} catch {}
-	return { accessToken: null, user: null, loading: false, error: null, success: null };
+	return { accessToken: null, refreshToken: null, user: null, loading: false, error: null, success: null };
 })();
 
 export const loginThunk = createAsyncThunk(
@@ -43,6 +44,26 @@ export const signupThunk = createAsyncThunk(
 	}
 );
 
+export const refreshTokenThunk = createAsyncThunk(
+	'auth/refreshToken',
+	async (_, { rejectWithValue }) => {
+		try {
+			const stored = localStorage.getItem('auth');
+			if (!stored) throw new Error('No refresh token found');
+			
+			const { refreshToken } = JSON.parse(stored) as { refreshToken?: string };
+			if (!refreshToken) throw new Error('No refresh token found');
+			
+			const res = await api.post('/users/refresh-token', { refreshToken });
+			return res.data?.data ?? res.data;
+		} catch (err: any) {
+			// Clear auth data if refresh fails
+			localStorage.removeItem('auth');
+			return rejectWithValue(err?.response?.data?.message || 'Token refresh failed');
+		}
+	}
+);
+
 export const logoutThunk = createAsyncThunk('auth/logout', async () => {
 	localStorage.removeItem('auth');
 });
@@ -51,10 +72,15 @@ const authSlice = createSlice({
 	name: 'auth',
 	initialState,
 	reducers: {
-		setAuth(state, action: PayloadAction<{ accessToken: string; user: AuthState['user'] }>) {
+		setAuth(state, action: PayloadAction<{ accessToken: string; refreshToken?: string; user: AuthState['user'] }>) {
 			state.accessToken = action.payload.accessToken;
+			state.refreshToken = action.payload.refreshToken || null;
 			state.user = action.payload.user;
-			localStorage.setItem('auth', JSON.stringify({ accessToken: state.accessToken, user: state.user }));
+			localStorage.setItem('auth', JSON.stringify({ 
+				accessToken: state.accessToken, 
+				refreshToken: state.refreshToken,
+				user: state.user 
+			}));
 		},
 		clearSuccess(state) {
 			state.success = null;
@@ -72,10 +98,12 @@ const authSlice = createSlice({
 			.addCase(loginThunk.fulfilled, (state, action: PayloadAction<any>) => {
 				state.loading = false;
 				const accessToken = action.payload?.accessToken || action.payload?.token;
+				const refreshToken = action.payload?.refreshToken;
 				const user = action.payload?.user || null;
 				state.accessToken = accessToken;
+				state.refreshToken = refreshToken;
 				state.user = user;
-				localStorage.setItem('auth', JSON.stringify({ accessToken, user }));
+				localStorage.setItem('auth', JSON.stringify({ accessToken, refreshToken, user }));
 			})
 			.addCase(loginThunk.rejected, (state, action: any) => {
 				state.loading = false;
@@ -90,17 +118,38 @@ const authSlice = createSlice({
 				state.loading = false;
 				state.success = 'Registration successful! Welcome to Fastag!';
 				const accessToken = action.payload?.accessToken || action.payload?.token;
+				const refreshToken = action.payload?.refreshToken;
 				const user = action.payload?.user || null;
 				state.accessToken = accessToken;
+				state.refreshToken = refreshToken;
 				state.user = user;
-				localStorage.setItem('auth', JSON.stringify({ accessToken, user }));
+				localStorage.setItem('auth', JSON.stringify({ accessToken, refreshToken, user }));
 			})
 			.addCase(signupThunk.rejected, (state, action: any) => {
 				state.loading = false;
 				state.error = action.payload || 'Signup failed';
 			})
+			.addCase(refreshTokenThunk.fulfilled, (state, action: PayloadAction<any>) => {
+				const accessToken = action.payload?.accessToken || action.payload?.token;
+				const refreshToken = action.payload?.refreshToken;
+				state.accessToken = accessToken;
+				state.refreshToken = refreshToken;
+				localStorage.setItem('auth', JSON.stringify({ 
+					accessToken, 
+					refreshToken, 
+					user: state.user 
+				}));
+			})
+			.addCase(refreshTokenThunk.rejected, (state) => {
+				state.accessToken = null;
+				state.refreshToken = null;
+				state.user = null;
+				state.loading = false;
+				state.error = 'Session expired. Please login again.';
+			})
 			.addCase(logoutThunk.fulfilled, (state) => {
 				state.accessToken = null;
+				state.refreshToken = null;
 				state.user = null;
 				state.loading = false;
 				state.error = null;
